@@ -27,6 +27,7 @@ const elements = {
   chartCanvas: document.querySelector("#chart"),
   tableBody: document.querySelector("#entries-table-body"),
   tableEmptyState: document.querySelector("#entries-empty-state"),
+  rowTemplate: document.querySelector("#entry-row-template"),
 };
 
 if (!elements.form) {
@@ -563,44 +564,115 @@ function renderTable(list) {
   const fragment = document.createDocumentFragment();
 
   for (const entry of list) {
-    const row = document.createElement("tr");
-    row.dataset.entryId = entry.id;
-    row.dataset.date = entry.date;
-    row.setAttribute("aria-selected", "false");
-    const displayDate = formatTableDate(entry.date);
-    row.innerHTML = `
-      <td>${displayDate}</td>
-      <td>${formatMetric(entry.weight, "kg")}</td>
-      <td>${formatOptionalMetric(entry.waist, "cm")}</td>
-      <td>${formatOptionalMetric(entry.chest, "cm")}</td>
-    `;
-    const actionsCell = document.createElement("td");
-    actionsCell.className = "table-actions-cell";
-    const actions = document.createElement("div");
-    actions.className = "table-actions";
-    const friendlyDate = displayDate;
-    const editButton = createTableActionButton(
-      "edit",
-      entry.id,
-      "✏️",
-      "Editar",
-      `Editar registro del ${friendlyDate}`,
-    );
-    const deleteButton = createTableActionButton(
-      "delete",
-      entry.id,
-      "🗑️",
-      "Eliminar",
-      `Eliminar registro del ${friendlyDate}`,
-    );
-    deleteButton.classList.add("danger");
-    actions.append(editButton, deleteButton);
-    actionsCell.appendChild(actions);
-    row.appendChild(actionsCell);
+    const row = createTableRow(entry);
     fragment.appendChild(row);
   }
 
   body.appendChild(fragment);
+}
+
+function createTableRow(entry) {
+  const friendlyDate = formatTableDate(entry.date);
+
+  if (elements.rowTemplate?.content) {
+    const templateFragment = elements.rowTemplate.content.cloneNode(true);
+    const row = templateFragment.querySelector("tr");
+    if (row) {
+      row.dataset.entryId = entry.id;
+      row.dataset.date = entry.date;
+      row.setAttribute("aria-selected", "false");
+
+      const dateCell = row.querySelector(".table-cell-date");
+      if (dateCell) {
+        dateCell.textContent = friendlyDate;
+      }
+      const weightCell = row.querySelector(".table-cell-weight");
+      if (weightCell) {
+        weightCell.textContent = formatMetric(entry.weight, "kg");
+      }
+      const waistCell = row.querySelector(".table-cell-waist");
+      if (waistCell) {
+        waistCell.textContent = formatOptionalMetric(entry.waist, "cm");
+      }
+      const chestCell = row.querySelector(".table-cell-chest");
+      if (chestCell) {
+        chestCell.textContent = formatOptionalMetric(entry.chest, "cm");
+      }
+
+      const editButton = row.querySelector('button[data-action="edit"]');
+      if (editButton) {
+        editButton.dataset.entryId = entry.id;
+        const editLabel = `Editar registro del ${friendlyDate}`;
+        editButton.setAttribute("aria-label", editLabel);
+        editButton.title = editLabel;
+      }
+
+      const deleteButton = row.querySelector('button[data-action="delete"]');
+      if (deleteButton) {
+        deleteButton.dataset.entryId = entry.id;
+        const deleteLabel = `Eliminar registro del ${friendlyDate}`;
+        deleteButton.setAttribute("aria-label", deleteLabel);
+        deleteButton.title = deleteLabel;
+      }
+
+      return row;
+    }
+  }
+
+  return createManualTableRow(entry, friendlyDate);
+}
+
+function createManualTableRow(entry, friendlyDate) {
+  const row = document.createElement("tr");
+  row.dataset.entryId = entry.id;
+  row.dataset.date = entry.date;
+  row.setAttribute("aria-selected", "false");
+
+  const dateCell = createTableCell(friendlyDate);
+  const weightCell = createTableCell(formatMetric(entry.weight, "kg"));
+  const waistCell = createTableCell(formatOptionalMetric(entry.waist, "cm"));
+  const chestCell = createTableCell(formatOptionalMetric(entry.chest, "cm"));
+  const actionsCell = createTableActionsCell(entry.id, friendlyDate);
+
+  row.append(dateCell, weightCell, waistCell, chestCell, actionsCell);
+  return row;
+}
+
+function createTableCell(content, className) {
+  const cell = document.createElement("td");
+  if (className) {
+    cell.className = className;
+  }
+  cell.textContent = content;
+  return cell;
+}
+
+function createTableActionsCell(entryId, friendlyDate) {
+  const cell = document.createElement("td");
+  cell.className = "table-actions-cell";
+
+  const actions = document.createElement("div");
+  actions.className = "table-actions";
+
+  const editButton = createTableActionButton(
+    "edit",
+    entryId,
+    "✏️",
+    "Editar",
+    `Editar registro del ${friendlyDate}`,
+  );
+  const deleteButton = createTableActionButton(
+    "delete",
+    entryId,
+    "🗑️",
+    "Eliminar",
+    `Eliminar registro del ${friendlyDate}`,
+  );
+  deleteButton.classList.add("danger");
+
+  actions.append(editButton, deleteButton);
+  cell.appendChild(actions);
+  return cell;
 }
 
 function createTableActionButton(action, entryId, icon, label, ariaLabel) {
@@ -624,60 +696,6 @@ function createTableActionButton(action, entryId, icon, label, ariaLabel) {
 
   button.append(iconSpan, labelSpan);
   return button;
-}
-
-function formatOptionalMetric(value, unit) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-  return formatMetric(value, unit);
-}
-
-function formatMetric(value, unit) {
-  const numericValue = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(numericValue)) {
-    return `${value} ${unit}`;
-  }
-  return `${numberFormatter.format(numericValue)} ${unit}`;
-}
-
-function formatTableDate(isoDate) {
-  const parsed = parseIsoDate(isoDate);
-  if (!parsed) {
-    return isoDate;
-  }
-  return tableDateFormatter.format(parsed);
-}
-
-function renderTable(list) {
-  const body = elements.tableBody;
-  const emptyState = elements.tableEmptyState;
-  if (!body || !emptyState) {
-    return;
-  }
-
-  body.textContent = "";
-
-  if (!list.length) {
-    emptyState.classList.add("is-visible");
-    return;
-  }
-
-  emptyState.classList.remove("is-visible");
-  const fragment = document.createDocumentFragment();
-
-  for (const entry of list) {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${formatTableDate(entry.date)}</td>
-      <td>${formatMetric(entry.weight, "kg")}</td>
-      <td>${formatOptionalMetric(entry.waist, "cm")}</td>
-      <td>${formatOptionalMetric(entry.chest, "cm")}</td>
-    `;
-    fragment.appendChild(row);
-  }
-
-  body.appendChild(fragment);
 }
 
 function formatOptionalMetric(value, unit) {
