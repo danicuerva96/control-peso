@@ -14,6 +14,33 @@ const chart = new Chart(ctx, {
   }
 });
 
+const tableBody = document.querySelector('#entries-table tbody');
+
+const formatValue = value => Number.isFinite(value) ? value.toString() : '-';
+
+function renderTable() {
+  if (!tableBody) {
+    return;
+  }
+  tableBody.innerHTML = '';
+  data.forEach(entry => {
+    const row = document.createElement('tr');
+    const weight = Number.isFinite(entry.weight) ? entry.weight : null;
+    const waist = Number.isFinite(entry.waist) ? entry.waist : null;
+    const chest = Number.isFinite(entry.chest) ? entry.chest : null;
+
+    row.innerHTML = `
+      <td>${entry.date}</td>
+      <td>${formatValue(weight)}</td>
+      <td>${formatValue(waist)}</td>
+      <td>${formatValue(chest)}</td>
+    `;
+    tableBody.appendChild(row);
+  });
+}
+
+renderTable();
+
 document.getElementById("form").addEventListener("submit", e => {
   e.preventDefault();
   const date = document.getElementById("date").value;
@@ -27,6 +54,8 @@ document.getElementById("form").addEventListener("submit", e => {
   chart.data.labels.push(date);
   chart.data.datasets[0].data.push(weight);
   chart.update();
+
+  renderTable();
 
   e.target.reset();
 });
