@@ -563,44 +563,67 @@ function renderTable(list) {
   const fragment = document.createDocumentFragment();
 
   for (const entry of list) {
-    const row = document.createElement("tr");
-    row.dataset.entryId = entry.id;
-    row.dataset.date = entry.date;
-    row.setAttribute("aria-selected", "false");
-    const displayDate = formatTableDate(entry.date);
-    row.innerHTML = `
-      <td>${displayDate}</td>
-      <td>${formatMetric(entry.weight, "kg")}</td>
-      <td>${formatOptionalMetric(entry.waist, "cm")}</td>
-      <td>${formatOptionalMetric(entry.chest, "cm")}</td>
-    `;
-    const actionsCell = document.createElement("td");
-    actionsCell.className = "table-actions-cell";
-    const actions = document.createElement("div");
-    actions.className = "table-actions";
-    const friendlyDate = displayDate;
-    const editButton = createTableActionButton(
-      "edit",
-      entry.id,
-      "✏️",
-      "Editar",
-      `Editar registro del ${friendlyDate}`,
-    );
-    const deleteButton = createTableActionButton(
-      "delete",
-      entry.id,
-      "🗑️",
-      "Eliminar",
-      `Eliminar registro del ${friendlyDate}`,
-    );
-    deleteButton.classList.add("danger");
-    actions.append(editButton, deleteButton);
-    actionsCell.appendChild(actions);
-    row.appendChild(actionsCell);
+    const row = createTableRow(entry);
     fragment.appendChild(row);
   }
 
   body.appendChild(fragment);
+}
+
+function createTableRow(entry) {
+  const row = document.createElement("tr");
+  row.dataset.entryId = entry.id;
+  row.dataset.date = entry.date;
+  row.setAttribute("aria-selected", "false");
+
+  const displayDate = formatTableDate(entry.date);
+  const friendlyDate = displayDate;
+
+  const dateCell = createTableCell(displayDate);
+  const weightCell = createTableCell(formatMetric(entry.weight, "kg"));
+  const waistCell = createTableCell(formatOptionalMetric(entry.waist, "cm"));
+  const chestCell = createTableCell(formatOptionalMetric(entry.chest, "cm"));
+  const actionsCell = createTableActionsCell(entry.id, friendlyDate);
+
+  row.append(dateCell, weightCell, waistCell, chestCell, actionsCell);
+  return row;
+}
+
+function createTableCell(content, className) {
+  const cell = document.createElement("td");
+  if (className) {
+    cell.className = className;
+  }
+  cell.textContent = content;
+  return cell;
+}
+
+function createTableActionsCell(entryId, friendlyDate) {
+  const cell = document.createElement("td");
+  cell.className = "table-actions-cell";
+
+  const actions = document.createElement("div");
+  actions.className = "table-actions";
+
+  const editButton = createTableActionButton(
+    "edit",
+    entryId,
+    "✏️",
+    "Editar",
+    `Editar registro del ${friendlyDate}`,
+  );
+  const deleteButton = createTableActionButton(
+    "delete",
+    entryId,
+    "🗑️",
+    "Eliminar",
+    `Eliminar registro del ${friendlyDate}`,
+  );
+  deleteButton.classList.add("danger");
+
+  actions.append(editButton, deleteButton);
+  cell.appendChild(actions);
+  return cell;
 }
 
 function createTableActionButton(action, entryId, icon, label, ariaLabel) {
