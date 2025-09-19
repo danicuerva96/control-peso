@@ -649,60 +649,6 @@ function formatTableDate(isoDate) {
   return tableDateFormatter.format(parsed);
 }
 
-function renderTable(list) {
-  const body = elements.tableBody;
-  const emptyState = elements.tableEmptyState;
-  if (!body || !emptyState) {
-    return;
-  }
-
-  body.textContent = "";
-
-  if (!list.length) {
-    emptyState.classList.add("is-visible");
-    return;
-  }
-
-  emptyState.classList.remove("is-visible");
-  const fragment = document.createDocumentFragment();
-
-  for (const entry of list) {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${formatTableDate(entry.date)}</td>
-      <td>${formatMetric(entry.weight, "kg")}</td>
-      <td>${formatOptionalMetric(entry.waist, "cm")}</td>
-      <td>${formatOptionalMetric(entry.chest, "cm")}</td>
-    `;
-    fragment.appendChild(row);
-  }
-
-  body.appendChild(fragment);
-}
-
-function formatOptionalMetric(value, unit) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-  return formatMetric(value, unit);
-}
-
-function formatMetric(value, unit) {
-  const numericValue = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(numericValue)) {
-    return `${value} ${unit}`;
-  }
-  return `${numberFormatter.format(numericValue)} ${unit}`;
-}
-
-function formatTableDate(isoDate) {
-  const parsed = parseIsoDate(isoDate);
-  if (!parsed) {
-    return isoDate;
-  }
-  return tableDateFormatter.format(parsed);
-}
-
 function formatChartLabel(isoDate) {
   const parsed = parseIsoDate(isoDate);
   return parsed ? dateFormatter.format(parsed) : isoDate;
