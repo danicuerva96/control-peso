@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 Control de Peso</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>📊 Control de Peso</h1>
+
+  <form id="form">
+    <input type="date" id="date" required>
+    <input type="number" step="0.1" id="weight" placeholder="Peso (kg)" required>
+    <input type="number" step="0.1" id="waist" placeholder="Cintura (cm)">
+    <input type="number" step="0.1" id="chest" placeholder="Pecho (cm)">
+    <button type="submit">Guardar</button>
+  </form>
+
+  <h2>Evolución del peso</h2>
+  <canvas id="chart" width="400" height="200"></canvas>
+
+  <script src="script.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
