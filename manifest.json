@@ -1,0 +1,13 @@
+{
+  "name": "Control de Peso",
+  "short_name": "Peso",
+  "lang": "es-ES",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d47a1",
+  "description": "Registra tu peso y medidas corporales para seguir tu progreso a lo largo del tiempo.",
+  "categories": ["health", "fitness", "productivity"],
+  "orientation": "portrait-primary",
+  "dir": "ltr"
+}
