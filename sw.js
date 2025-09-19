@@ -34,6 +34,11 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  if (APP_SHELL.includes(requestUrl.toString())) {
+    event.respondWith(networkFirstAsset(event.request));
+    return;
+  }
+
   event.respondWith(cacheFirst(event.request));
 });
 
@@ -68,6 +73,23 @@ async function networkFirst(request) {
     if (cachedIndex) {
       return cachedIndex;
     }
+    const cachedResponse = await cache.match(request, { ignoreSearch: true });
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    throw error;
+  }
+}
+
+async function networkFirstAsset(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
     const cachedResponse = await cache.match(request, { ignoreSearch: true });
     if (cachedResponse) {
       return cachedResponse;
