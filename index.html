@@ -39,6 +39,34 @@
           <label for="chest">Pecho (cm)</label>
           <input type="number" id="chest" name="chest" step="0.1" min="1" inputmode="decimal">
         </div>
+        <div class="field">
+          <label for="right-bicep">Bíceps derecho (cm)</label>
+          <input type="number" id="right-bicep" name="right-bicep" step="0.1" min="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="left-bicep">Bíceps izquierdo (cm)</label>
+          <input type="number" id="left-bicep" name="left-bicep" step="0.1" min="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="glutes">Glúteos (cm)</label>
+          <input type="number" id="glutes" name="glutes" step="0.1" min="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="right-thigh">Muslo derecho (cm)</label>
+          <input type="number" id="right-thigh" name="right-thigh" step="0.1" min="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="left-thigh">Muslo izquierdo (cm)</label>
+          <input type="number" id="left-thigh" name="left-thigh" step="0.1" min="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="right-calf">Gemelo derecho (cm)</label>
+          <input type="number" id="right-calf" name="right-calf" step="0.1" min="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="left-calf">Gemelo izquierdo (cm)</label>
+          <input type="number" id="left-calf" name="left-calf" step="0.1" min="1" inputmode="decimal">
+        </div>
         <div class="form-actions">
           <button type="submit" class="primary with-icon" id="save-entry">
             <span class="button-icon" id="save-entry-icon" aria-hidden="true">💾</span>
@@ -75,6 +103,13 @@
               <th scope="col">Peso (kg)</th>
               <th scope="col">Cintura (cm)</th>
               <th scope="col">Pecho (cm)</th>
+              <th scope="col">Bíceps der. (cm)</th>
+              <th scope="col">Bíceps izq. (cm)</th>
+              <th scope="col">Glúteos (cm)</th>
+              <th scope="col">Muslo der. (cm)</th>
+              <th scope="col">Muslo izq. (cm)</th>
+              <th scope="col">Gemelo der. (cm)</th>
+              <th scope="col">Gemelo izq. (cm)</th>
               <th scope="col" class="actions-column">Acciones</th>
             </tr>
           </thead>
@@ -86,6 +121,13 @@
             <td class="table-cell table-cell-weight"></td>
             <td class="table-cell table-cell-waist"></td>
             <td class="table-cell table-cell-chest"></td>
+            <td class="table-cell table-cell-right-bicep"></td>
+            <td class="table-cell table-cell-left-bicep"></td>
+            <td class="table-cell table-cell-glutes"></td>
+            <td class="table-cell table-cell-right-thigh"></td>
+            <td class="table-cell table-cell-left-thigh"></td>
+            <td class="table-cell table-cell-right-calf"></td>
+            <td class="table-cell table-cell-left-calf"></td>
             <td class="table-actions-cell">
               <div class="table-actions">
                 <button type="button" class="table-action with-icon" data-action="edit">

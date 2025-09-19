@@ -11,12 +11,67 @@ const numberFormatter = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: NUMBER_PRECISION,
 });
 
+const OPTIONAL_METRIC_FIELDS = [
+  { key: "waist", label: "Cintura", unit: "cm", elementKey: "waist", tableClass: ".table-cell-waist" },
+  { key: "chest", label: "Pecho", unit: "cm", elementKey: "chest", tableClass: ".table-cell-chest" },
+  {
+    key: "rightBicep",
+    label: "Bíceps der.",
+    unit: "cm",
+    elementKey: "rightBicep",
+    tableClass: ".table-cell-right-bicep",
+  },
+  {
+    key: "leftBicep",
+    label: "Bíceps izq.",
+    unit: "cm",
+    elementKey: "leftBicep",
+    tableClass: ".table-cell-left-bicep",
+  },
+  { key: "glutes", label: "Glúteos", unit: "cm", elementKey: "glutes", tableClass: ".table-cell-glutes" },
+  {
+    key: "rightThigh",
+    label: "Muslo der.",
+    unit: "cm",
+    elementKey: "rightThigh",
+    tableClass: ".table-cell-right-thigh",
+  },
+  {
+    key: "leftThigh",
+    label: "Muslo izq.",
+    unit: "cm",
+    elementKey: "leftThigh",
+    tableClass: ".table-cell-left-thigh",
+  },
+  {
+    key: "rightCalf",
+    label: "Gemelo der.",
+    unit: "cm",
+    elementKey: "rightCalf",
+    tableClass: ".table-cell-right-calf",
+  },
+  {
+    key: "leftCalf",
+    label: "Gemelo izq.",
+    unit: "cm",
+    elementKey: "leftCalf",
+    tableClass: ".table-cell-left-calf",
+  },
+];
+
 const elements = {
   form: document.querySelector("#entry-form"),
   date: document.querySelector("#date"),
   weight: document.querySelector("#weight"),
   waist: document.querySelector("#waist"),
   chest: document.querySelector("#chest"),
+  rightBicep: document.querySelector("#right-bicep"),
+  leftBicep: document.querySelector("#left-bicep"),
+  glutes: document.querySelector("#glutes"),
+  rightThigh: document.querySelector("#right-thigh"),
+  leftThigh: document.querySelector("#left-thigh"),
+  rightCalf: document.querySelector("#right-calf"),
+  leftCalf: document.querySelector("#left-calf"),
   submitButton: document.querySelector("#save-entry"),
   submitButtonIcon: document.querySelector("#save-entry-icon"),
   submitButtonLabel: document.querySelector("#save-entry-label"),
@@ -161,11 +216,13 @@ function fillFormWithEntry(entry) {
   if (elements.weight) {
     elements.weight.value = entry.weight !== null && entry.weight !== undefined ? String(entry.weight) : "";
   }
-  if (elements.waist) {
-    elements.waist.value = entry.waist !== null && entry.waist !== undefined ? String(entry.waist) : "";
-  }
-  if (elements.chest) {
-    elements.chest.value = entry.chest !== null && entry.chest !== undefined ? String(entry.chest) : "";
+  for (const field of OPTIONAL_METRIC_FIELDS) {
+    const input = elements[field.elementKey];
+    if (!input) {
+      continue;
+    }
+    const value = entry[field.key];
+    input.value = value !== null && value !== undefined ? String(value) : "";
   }
 }
 
@@ -250,12 +307,16 @@ function createEntryFromForm() {
     return null;
   }
 
-  return {
+  const entry = {
     date: dateValue,
     weight: weightValue,
-    waist: parseMetric(elements.waist?.value),
-    chest: parseMetric(elements.chest?.value),
   };
+
+  for (const field of OPTIONAL_METRIC_FIELDS) {
+    entry[field.key] = parseMetric(elements[field.elementKey]?.value);
+  }
+
+  return entry;
 }
 
 function parseMetric(rawValue) {
@@ -324,8 +385,9 @@ function normaliseStoredEntry(item) {
     id: typeof item.id === "string" && item.id.length ? item.id : generateEntryId(),
     date,
     weight,
-    waist: parseMetric(item.waist ?? null),
-    chest: parseMetric(item.chest ?? null),
+    ...Object.fromEntries(
+      OPTIONAL_METRIC_FIELDS.map(field => [field.key, parseMetric(item[field.key] ?? null)]),
+    ),
   };
 }
 
@@ -478,9 +540,11 @@ function initialiseChart(canvas) {
             label(context) {
               const value = context.parsed.y ?? 0;
               const entry = entries[context.dataIndex];
-              const waist = entry?.waist ? ` | Cintura: ${formatMetric(entry.waist, "cm")}` : "";
-              const chest = entry?.chest ? ` | Pecho: ${formatMetric(entry.chest, "cm")}` : "";
-              return `Peso: ${formatMetric(value, "kg")}${waist}${chest}`;
+              const extraMetrics = OPTIONAL_METRIC_FIELDS.map(field => {
+                const metricValue = entry?.[field.key];
+                return metricValue ? ` | ${field.label}: ${formatMetric(metricValue, field.unit)}` : "";
+              }).join("");
+              return `Peso: ${formatMetric(value, "kg")}${extraMetrics}`;
             },
           },
         },
@@ -590,13 +654,11 @@ function createTableRow(entry) {
       if (weightCell) {
         weightCell.textContent = formatMetric(entry.weight, "kg");
       }
-      const waistCell = row.querySelector(".table-cell-waist");
-      if (waistCell) {
-        waistCell.textContent = formatOptionalMetric(entry.waist, "cm");
-      }
-      const chestCell = row.querySelector(".table-cell-chest");
-      if (chestCell) {
-        chestCell.textContent = formatOptionalMetric(entry.chest, "cm");
+      for (const field of OPTIONAL_METRIC_FIELDS) {
+        const cell = row.querySelector(field.tableClass);
+        if (cell) {
+          cell.textContent = formatOptionalMetric(entry[field.key], field.unit);
+        }
       }
 
       const editButton = row.querySelector('button[data-action="edit"]');
@@ -630,11 +692,12 @@ function createManualTableRow(entry, friendlyDate) {
 
   const dateCell = createTableCell(friendlyDate);
   const weightCell = createTableCell(formatMetric(entry.weight, "kg"));
-  const waistCell = createTableCell(formatOptionalMetric(entry.waist, "cm"));
-  const chestCell = createTableCell(formatOptionalMetric(entry.chest, "cm"));
+  const metricCells = OPTIONAL_METRIC_FIELDS.map(field =>
+    createTableCell(formatOptionalMetric(entry[field.key], field.unit)),
+  );
   const actionsCell = createTableActionsCell(entry.id, friendlyDate);
 
-  row.append(dateCell, weightCell, waistCell, chestCell, actionsCell);
+  row.append(dateCell, weightCell, ...metricCells, actionsCell);
   return row;
 }
 
