@@ -171,6 +171,7 @@ function initialiseChart(canvas) {
   const ctx = canvas.getContext("2d");
   const accent = "#2563eb";
   const accentDark = "#1d4ed8";
+  const accentBright = "#60a5fa";
 
   return new Chart(ctx, {
     type: "line",
@@ -186,16 +187,37 @@ function initialiseChart(canvas) {
           },
           backgroundColor(context) {
             const { chart } = context;
-            return createFillGradient(chart) ?? "rgba(37, 99, 235, 0.16)";
+            return createFillGradient(chart) ?? "rgba(37, 99, 235, 0.18)";
           },
           fill: true,
-          tension: 0.38,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-          pointBackgroundColor: "#ffffff",
-          pointBorderColor: accentDark,
-          pointBorderWidth: 2,
+          tension: 0.46,
           borderWidth: 3,
+          borderCapStyle: "round",
+          borderJoinStyle: "round",
+          clip: 12,
+          pointRadius(context) {
+            const points = context.chart?.data?.datasets?.[context.datasetIndex]?.data ?? [];
+            return context.dataIndex === points.length - 1 ? 6 : 4.5;
+          },
+          pointHoverRadius: 8,
+          pointBackgroundColor(context) {
+            const points = context.chart?.data?.datasets?.[context.datasetIndex]?.data ?? [];
+            const isLastPoint = context.dataIndex === points.length - 1;
+            return isLastPoint ? accentDark : "#ffffff";
+          },
+          pointBorderColor(context) {
+            const points = context.chart?.data?.datasets?.[context.datasetIndex]?.data ?? [];
+            const isLastPoint = context.dataIndex === points.length - 1;
+            return isLastPoint ? accentBright : accentDark;
+          },
+          pointBorderWidth(context) {
+            const points = context.chart?.data?.datasets?.[context.datasetIndex]?.data ?? [];
+            return context.dataIndex === points.length - 1 ? 3 : 2;
+          },
+          pointHoverBackgroundColor: accentDark,
+          pointHoverBorderColor: "#ffffff",
+          pointHoverBorderWidth: 2,
+          pointHitRadius: 14,
         },
       ],
     },
@@ -208,10 +230,10 @@ function initialiseChart(canvas) {
       },
       layout: {
         padding: {
-          left: 8,
-          right: 18,
-          top: 12,
-          bottom: 12,
+          left: 12,
+          right: 20,
+          top: 16,
+          bottom: 16,
         },
       },
       plugins: {
@@ -219,15 +241,20 @@ function initialiseChart(canvas) {
           display: true,
           labels: {
             usePointStyle: true,
-            padding: 20,
+            padding: 18,
+            boxWidth: 12,
+            boxHeight: 12,
             color: "#1e293b",
             font: {
+              size: 13,
               weight: "600",
             },
           },
         },
         tooltip: {
           backgroundColor: "rgba(15, 23, 42, 0.92)",
+          borderColor: "rgba(59, 130, 246, 0.4)",
+          borderWidth: 1,
           titleFont: {
             size: 13,
             weight: "600",
@@ -235,9 +262,18 @@ function initialiseChart(canvas) {
           bodyFont: {
             size: 13,
           },
-          padding: 12,
+          titleColor: "#bfdbfe",
+          bodyColor: "#e2e8f0",
+          padding: 14,
           displayColors: false,
+          cornerRadius: 12,
+          caretPadding: 8,
+          caretSize: 7,
           callbacks: {
+            title(context) {
+              const entry = entries[context[0]?.dataIndex ?? 0];
+              return entry ? formatTableDate(entry.date) : context[0]?.label;
+            },
             label(context) {
               const value = context.parsed.y ?? 0;
               const entry = entries[context.dataIndex];
@@ -250,25 +286,47 @@ function initialiseChart(canvas) {
       },
       scales: {
         x: {
-          grid: {
+          border: {
             display: false,
+          },
+          grid: {
+            color: "rgba(148, 163, 184, 0.14)",
+            drawBorder: false,
+            drawTicks: false,
+            borderDash: [6, 6],
           },
           ticks: {
             color: "#475569",
             font: {
               weight: "600",
             },
+            padding: 10,
+            maxRotation: 0,
+            autoSkipPadding: 18,
           },
         },
         y: {
           beginAtZero: false,
+          grace: "6%",
+          border: {
+            display: false,
+          },
           grid: {
-            color: "rgba(148, 163, 184, 0.3)",
+            color: "rgba(148, 163, 184, 0.18)",
             drawBorder: false,
+            drawTicks: false,
+            borderDash: [4, 6],
           },
           ticks: {
             color: "#475569",
-            padding: 8,
+            padding: 10,
+            font: {
+              weight: "600",
+            },
+            callback(value) {
+              const numericValue = typeof value === "number" ? value : Number(value);
+              return Number.isFinite(numericValue) ? numberFormatter.format(numericValue) : value;
+            },
           },
         },
       },
@@ -277,9 +335,13 @@ function initialiseChart(canvas) {
           duration: 800,
           easing: "easeOutQuad",
         },
+        radius: {
+          duration: 200,
+          easing: "easeOutQuad",
+        },
       },
     },
-    plugins: [createShadowPlugin(accentDark)],
+    plugins: [createBackgroundPlugin(), createShadowPlugin(accentDark)],
   });
 }
 
@@ -389,6 +451,42 @@ function setClearButtonState(isEnabled) {
   elements.clearButton.setAttribute("aria-disabled", String(!isEnabled));
 }
 
+function createBackgroundPlugin() {
+  return {
+    id: "gradientBackground",
+    beforeDraw(chart) {
+      const { ctx, chartArea } = chart;
+      if (!chartArea) {
+        return;
+      }
+
+      const { left, right, top, bottom } = chartArea;
+      const width = right - left;
+      const height = bottom - top;
+
+      ctx.save();
+      const gradient = ctx.createLinearGradient(0, bottom, 0, top);
+      gradient.addColorStop(0, "rgba(37, 99, 235, 0.05)");
+      gradient.addColorStop(0.6, "rgba(96, 165, 250, 0.08)");
+      gradient.addColorStop(1, "rgba(59, 130, 246, 0.16)");
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(left, top, width, height);
+
+      const radial = ctx.createRadialGradient(right, top, 0, right, top, width);
+      radial.addColorStop(0, "rgba(168, 85, 247, 0.18)");
+      radial.addColorStop(1, "rgba(168, 85, 247, 0)");
+      ctx.fillStyle = radial;
+      ctx.fillRect(left, top, width, height);
+
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.16)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left, top, width, height);
+      ctx.restore();
+    },
+  };
+}
+
 function createShadowPlugin(color) {
   return {
     id: "lineShadow",
@@ -396,8 +494,8 @@ function createShadowPlugin(color) {
       const { ctx } = chart;
       ctx.save();
       ctx.shadowColor = color;
-      ctx.shadowBlur = 18;
-      ctx.shadowOffsetY = 8;
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 7;
     },
     afterDatasetsDraw(chart) {
       chart.ctx.restore();
@@ -413,7 +511,8 @@ function createLineGradient(chart) {
 
   const gradient = ctx.createLinearGradient(chartArea.left, chartArea.bottom, chartArea.right, chartArea.top);
   gradient.addColorStop(0, "#2563eb");
-  gradient.addColorStop(1, "#9333ea");
+  gradient.addColorStop(0.5, "#3b82f6");
+  gradient.addColorStop(1, "#7c3aed");
   return gradient;
 }
 
@@ -424,7 +523,8 @@ function createFillGradient(chart) {
   }
 
   const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-  gradient.addColorStop(0, "rgba(147, 197, 253, 0.45)");
-  gradient.addColorStop(1, "rgba(37, 99, 235, 0.05)");
+  gradient.addColorStop(0, "rgba(59, 130, 246, 0.28)");
+  gradient.addColorStop(0.55, "rgba(37, 99, 235, 0.16)");
+  gradient.addColorStop(1, "rgba(37, 99, 235, 0.02)");
   return gradient;
 }
