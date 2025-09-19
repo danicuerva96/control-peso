@@ -19,6 +19,10 @@
     <section class="card">
       <h2>Nuevo registro</h2>
       <form id="entry-form" autocomplete="off">
+        <div id="form-editing-banner" class="form-banner" hidden>
+          <span class="banner-icon" aria-hidden="true">✏️</span>
+          <span>Estás editando el registro del <time id="form-editing-date"></time>.</span>
+        </div>
         <div class="field">
           <label for="date">Fecha</label>
           <input type="date" id="date" name="date" required>
@@ -35,10 +39,16 @@
           <label for="chest">Pecho (cm)</label>
           <input type="number" id="chest" name="chest" step="0.1" min="1" inputmode="decimal">
         </div>
-        <button type="submit" class="primary with-icon">
-          <span class="button-icon" aria-hidden="true">💾</span>
-          <span>Guardar registro</span>
-        </button>
+        <div class="form-actions">
+          <button type="submit" class="primary with-icon" id="save-entry">
+            <span class="button-icon" id="save-entry-icon" aria-hidden="true">💾</span>
+            <span id="save-entry-label">Guardar registro</span>
+          </button>
+          <button type="button" class="ghost with-icon" id="cancel-edit" hidden>
+            <span class="button-icon" aria-hidden="true">↩️</span>
+            <span>Cancelar edición</span>
+          </button>
+        </div>
       </form>
     </section>
     <section class="card">
@@ -65,11 +75,12 @@
               <th scope="col">Peso (kg)</th>
               <th scope="col">Cintura (cm)</th>
               <th scope="col">Pecho (cm)</th>
+              <th scope="col" class="actions-column">Acciones</th>
             </tr>
           </thead>
           <tbody id="entries-table-body"></tbody>
         </table>
-        <p id="entries-empty-state" class="table-empty" role="status">Todavia no hay registros guardados.</p>
+        <p id="entries-empty-state" class="table-empty" role="status" aria-hidden="true">Todavía no hay registros guardados.</p>
       </div>
     </section>
   </main>
