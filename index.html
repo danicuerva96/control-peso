@@ -18,7 +18,8 @@
   <main>
     <section class="card">
       <h2>Nuevo registro</h2>
-      <form id="entry-form" autocomplete="off">
+      <div class="form-layout">
+        <form id="entry-form" autocomplete="off">
         <div id="form-editing-banner" class="form-banner" hidden>
           <span class="banner-icon" aria-hidden="true">✏️</span>
           <span>Estás editando el registro del <time id="form-editing-date"></time>.</span>
@@ -77,7 +78,69 @@
             <span>Cancelar edición</span>
           </button>
         </div>
-      </form>
+        </form>
+
+        <figure class="measurement-figure">
+          <svg class="measurement-illustration" viewBox="0 0 320 520" role="img" aria-labelledby="body-diagram-title body-diagram-desc">
+            <title id="body-diagram-title">Mapa de medidas corporales</title>
+            <desc id="body-diagram-desc">Diagrama de un cuerpo humano con las medidas solicitadas en el formulario.</desc>
+            <style>
+              .body { fill: #dbeafe; stroke: #2563eb; stroke-width: 4; stroke-linejoin: round; }
+              .pointer { stroke: #2563eb; stroke-width: 3; stroke-linecap: round; fill: none; }
+              .point { fill: #2563eb; }
+              .label { fill: #0f172a; font-size: 18px; font-weight: 600; }
+            </style>
+            <g transform="translate(40, 20)">
+              <circle class="body" cx="120" cy="60" r="40" />
+              <rect class="body" x="95" y="100" width="50" height="150" rx="26" />
+              <rect class="body" x="70" y="120" width="25" height="130" rx="20" />
+              <rect class="body" x="145" y="120" width="25" height="130" rx="20" />
+              <rect class="body" x="95" y="250" width="22" height="130" rx="18" />
+              <rect class="body" x="123" y="250" width="22" height="130" rx="18" />
+              <rect class="body" x="92" y="380" width="28" height="90" rx="16" />
+              <rect class="body" x="120" y="380" width="28" height="90" rx="16" />
+              <circle class="point" cx="120" cy="60" r="6" />
+              <circle class="point" cx="145" cy="170" r="6" />
+              <circle class="point" cx="145" cy="220" r="6" />
+              <circle class="point" cx="80" cy="190" r="6" />
+              <circle class="point" cx="210" cy="190" r="6" />
+              <circle class="point" cx="150" cy="300" r="6" />
+              <circle class="point" cx="75" cy="320" r="6" />
+              <circle class="point" cx="195" cy="320" r="6" />
+              <circle class="point" cx="70" cy="410" r="6" />
+              <circle class="point" cx="200" cy="410" r="6" />
+              <line class="pointer" x1="120" y1="60" x2="120" y2="12" />
+              <line class="pointer" x1="145" y1="170" x2="230" y2="130" />
+              <line class="pointer" x1="145" y1="220" x2="230" y2="205" />
+              <line class="pointer" x1="80" y1="190" x2="10" y2="165" />
+              <line class="pointer" x1="210" y1="190" x2="270" y2="165" />
+              <line class="pointer" x1="150" y1="300" x2="240" y2="300" />
+              <line class="pointer" x1="75" y1="320" x2="20" y2="340" />
+              <line class="pointer" x1="195" y1="320" x2="260" y2="340" />
+              <line class="pointer" x1="70" y1="410" x2="20" y2="430" />
+              <line class="pointer" x1="200" y1="410" x2="270" y2="430" />
+              <text class="label" x="120" y="10" text-anchor="middle">Peso corporal</text>
+              <text class="label" x="238" y="126">Pecho</text>
+              <text class="label" x="238" y="204">Cintura</text>
+              <text class="label" x="4" y="162" text-anchor="end">Bíceps der.</text>
+              <text class="label" x="278" y="162">Bíceps izq.</text>
+              <text class="label" x="248" y="304">Glúteos</text>
+              <text class="label" x="14" y="346" text-anchor="end">Muslo der.</text>
+              <text class="label" x="268" y="346">Muslo izq.</text>
+              <text class="label" x="14" y="436" text-anchor="end">Gemelo der.</text>
+              <text class="label" x="278" y="436">Gemelo izq.</text>
+            </g>
+          </svg>
+          <figcaption>
+            <p>Consulta el diagrama para ubicar cada una de las medidas corporales del formulario. Recuerda registrar tu peso corporal total junto al resto de perímetros.</p>
+            <ul class="measurement-legend">
+              <li>Pecho y cintura se miden con una cinta horizontal, alrededor del torso.</li>
+              <li>Los bíceps, muslos y gemelos se registran por separado para cada lado del cuerpo.</li>
+              <li>La medida de glúteos debe tomarse en la parte más prominente de la cadera.</li>
+            </ul>
+          </figcaption>
+        </figure>
+      </div>
     </section>
     <section class="card">
       <header class="section-header">

@@ -74,9 +74,72 @@ main {
 
 form {
   display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   align-items: end;
+}
+
+.form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  align-items: stretch;
+}
+
+.form-layout form {
+  margin: 0;
+  max-width: 520px;
+}
+
+.measurement-figure {
+  margin: 0;
+  padding: 22px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(191, 219, 254, 0.4), rgba(219, 234, 254, 0.8));
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.measurement-illustration {
+  width: 100%;
+  max-width: 320px;
+  align-self: center;
+}
+
+.measurement-figure figcaption {
+  font-size: 0.96rem;
+  color: #1e293b;
+  line-height: 1.6;
+}
+
+.measurement-legend {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.measurement-legend li {
+  list-style: disc;
+}
+
+@media (min-width: 960px) {
+  .form-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .form-layout form {
+    flex: 1 1 340px;
+    max-width: 480px;
+  }
+
+  .measurement-figure {
+    flex: 1 1 320px;
+  }
 }
 
 .form-banner {
