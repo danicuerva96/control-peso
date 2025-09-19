@@ -27,6 +27,7 @@ const elements = {
   chartCanvas: document.querySelector("#chart"),
   tableBody: document.querySelector("#entries-table-body"),
   tableEmptyState: document.querySelector("#entries-empty-state"),
+  rowTemplate: document.querySelector("#entry-row-template"),
 };
 
 if (!elements.form) {
@@ -571,15 +572,63 @@ function renderTable(list) {
 }
 
 function createTableRow(entry) {
+  const friendlyDate = formatTableDate(entry.date);
+
+  if (elements.rowTemplate?.content) {
+    const templateFragment = elements.rowTemplate.content.cloneNode(true);
+    const row = templateFragment.querySelector("tr");
+    if (row) {
+      row.dataset.entryId = entry.id;
+      row.dataset.date = entry.date;
+      row.setAttribute("aria-selected", "false");
+
+      const dateCell = row.querySelector(".table-cell-date");
+      if (dateCell) {
+        dateCell.textContent = friendlyDate;
+      }
+      const weightCell = row.querySelector(".table-cell-weight");
+      if (weightCell) {
+        weightCell.textContent = formatMetric(entry.weight, "kg");
+      }
+      const waistCell = row.querySelector(".table-cell-waist");
+      if (waistCell) {
+        waistCell.textContent = formatOptionalMetric(entry.waist, "cm");
+      }
+      const chestCell = row.querySelector(".table-cell-chest");
+      if (chestCell) {
+        chestCell.textContent = formatOptionalMetric(entry.chest, "cm");
+      }
+
+      const editButton = row.querySelector('button[data-action="edit"]');
+      if (editButton) {
+        editButton.dataset.entryId = entry.id;
+        const editLabel = `Editar registro del ${friendlyDate}`;
+        editButton.setAttribute("aria-label", editLabel);
+        editButton.title = editLabel;
+      }
+
+      const deleteButton = row.querySelector('button[data-action="delete"]');
+      if (deleteButton) {
+        deleteButton.dataset.entryId = entry.id;
+        const deleteLabel = `Eliminar registro del ${friendlyDate}`;
+        deleteButton.setAttribute("aria-label", deleteLabel);
+        deleteButton.title = deleteLabel;
+      }
+
+      return row;
+    }
+  }
+
+  return createManualTableRow(entry, friendlyDate);
+}
+
+function createManualTableRow(entry, friendlyDate) {
   const row = document.createElement("tr");
   row.dataset.entryId = entry.id;
   row.dataset.date = entry.date;
   row.setAttribute("aria-selected", "false");
 
-  const displayDate = formatTableDate(entry.date);
-  const friendlyDate = displayDate;
-
-  const dateCell = createTableCell(displayDate);
+  const dateCell = createTableCell(friendlyDate);
   const weightCell = createTableCell(formatMetric(entry.weight, "kg"));
   const waistCell = createTableCell(formatOptionalMetric(entry.waist, "cm"));
   const chestCell = createTableCell(formatOptionalMetric(entry.chest, "cm"));

@@ -80,6 +80,26 @@
           </thead>
           <tbody id="entries-table-body"></tbody>
         </table>
+        <template id="entry-row-template">
+          <tr data-entry-id="" data-date="" aria-selected="false">
+            <td class="table-cell table-cell-date"></td>
+            <td class="table-cell table-cell-weight"></td>
+            <td class="table-cell table-cell-waist"></td>
+            <td class="table-cell table-cell-chest"></td>
+            <td class="table-actions-cell">
+              <div class="table-actions">
+                <button type="button" class="table-action with-icon" data-action="edit">
+                  <span class="button-icon" aria-hidden="true">✏️</span>
+                  <span>Editar</span>
+                </button>
+                <button type="button" class="table-action with-icon danger" data-action="delete">
+                  <span class="button-icon" aria-hidden="true">🗑️</span>
+                  <span>Eliminar</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </template>
         <p id="entries-empty-state" class="table-empty" role="status" aria-hidden="true">Todavía no hay registros guardados.</p>
       </div>
     </section>
