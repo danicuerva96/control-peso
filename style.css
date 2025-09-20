@@ -126,7 +126,7 @@ form {
   list-style: disc;
 }
 
-@media (min-width: 960px) {
+@media (min-width: 720px) {
   .form-layout {
     flex-direction: row;
     align-items: flex-start;
