@@ -157,10 +157,17 @@
     <section class="card">
       <header class="section-header">
         <h2>Historial de registros</h2>
-        <button type="button" id="export-excel" class="ghost with-icon">
-          <span class="button-icon" aria-hidden="true">⬇️</span>
-          <span>Descargar Excel</span>
-        </button>
+        <div class="section-header-actions">
+          <button type="button" id="import-excel" class="ghost with-icon">
+            <span class="button-icon" aria-hidden="true">⬆️</span>
+            <span>Importar Excel</span>
+          </button>
+          <button type="button" id="export-excel" class="ghost with-icon">
+            <span class="button-icon" aria-hidden="true">⬇️</span>
+            <span>Descargar Excel</span>
+          </button>
+        </div>
+        <input type="file" id="import-excel-input" accept=".xlsx,.xls,.csv" hidden>
       </header>
       <div class="table-wrapper">
         <table id="entries-table">

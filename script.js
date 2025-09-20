@@ -13,6 +13,36 @@ const numberFormatter = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: NUMBER_PRECISION,
 });
 
+const SPANISH_MONTHS = {
+  enero: 1,
+  ene: 1,
+  febrero: 2,
+  feb: 2,
+  marzo: 3,
+  mar: 3,
+  abril: 4,
+  abr: 4,
+  mayo: 5,
+  may: 5,
+  junio: 6,
+  jun: 6,
+  julio: 7,
+  jul: 7,
+  agosto: 8,
+  ago: 8,
+  septiembre: 9,
+  sept: 9,
+  sep: 9,
+  setiembre: 9,
+  set: 9,
+  octubre: 10,
+  oct: 10,
+  noviembre: 11,
+  nov: 11,
+  diciembre: 12,
+  dic: 12,
+};
+
 const OPTIONAL_METRIC_FIELDS = [
   { key: "waist", label: "Cintura", unit: "cm", elementKey: "waist", tableClass: ".table-cell-waist" },
   { key: "chest", label: "Pecho", unit: "cm", elementKey: "chest", tableClass: ".table-cell-chest" },
@@ -61,15 +91,44 @@ const OPTIONAL_METRIC_FIELDS = [
   },
 ];
 
-const EXPORT_COLUMNS = [
-  { header: "Fecha", width: 20, value: entry => formatTableDate(entry.date) },
-  { header: "Peso (kg)", width: 14, value: entry => entry.weight ?? "" },
+const EXCEL_COLUMNS = [
+  { key: "id", header: "ID", width: 26, exportable: false, importKeys: ["id"] },
+  {
+    key: "date",
+    header: "Fecha",
+    width: 20,
+    required: true,
+    importKeys: ["fecha", "date"],
+    exportValue: entry => formatTableDate(entry.date),
+  },
+  {
+    key: "weight",
+    header: "Peso (kg)",
+    width: 14,
+    required: true,
+    importKeys: ["peso", "peso kg", "peso (kg)", "weight"],
+    exportValue: entry => entry.weight ?? "",
+  },
   ...OPTIONAL_METRIC_FIELDS.map(field => ({
+    key: field.key,
     header: `${field.label} (${field.unit})`,
     width: 16,
-    value: entry => entry[field.key] ?? "",
+    importKeys: [
+      field.label,
+      `${field.label} (${field.unit})`,
+      `${field.label} ${field.unit}`,
+      field.elementKey,
+    ],
+    exportValue: entry => entry[field.key] ?? "",
   })),
 ];
+
+const EXPORT_COLUMNS = EXCEL_COLUMNS.filter(column => column.exportable !== false).map(column => ({
+  key: column.key,
+  header: column.header,
+  width: column.width ?? 16,
+  value: column.exportValue ?? (entry => entry[column.key] ?? ""),
+}));
 
 const elements = {
   form: document.querySelector("#entry-form"),
@@ -96,6 +155,8 @@ const elements = {
   tableEmptyState: document.querySelector("#entries-empty-state"),
   rowTemplate: document.querySelector("#entry-row-template"),
   exportButton: document.querySelector("#export-excel"),
+  importButton: document.querySelector("#import-excel"),
+  importInput: document.querySelector("#import-excel-input"),
 };
 
 if (!elements.form) {
@@ -127,6 +188,15 @@ if (elements.tableBody) {
 }
 if (elements.exportButton) {
   elements.exportButton.addEventListener("click", handleExportToExcel);
+}
+
+if (elements.importButton && elements.importInput) {
+  elements.importButton.addEventListener("click", () => {
+    elements.importInput?.click();
+  });
+}
+if (elements.importInput) {
+  elements.importInput.addEventListener("change", handleImportFromExcel);
 }
 if (elements.date) {
   elements.date.addEventListener("input", () => {
@@ -369,6 +439,94 @@ async function handleExportToExcel() {
   }
 }
 
+async function handleImportFromExcel(event) {
+  const input = event.target instanceof HTMLInputElement ? event.target : null;
+  if (!input) {
+    return;
+  }
+
+  const file = input.files?.[0] ?? null;
+  input.value = "";
+
+  if (!file) {
+    return;
+  }
+
+  setImportButtonBusy(true);
+
+  try {
+    const xlsx = await loadXlsxModule();
+    if (!xlsx || typeof xlsx.read !== "function") {
+      throw new Error("No se pudo procesar el archivo de Excel.");
+    }
+
+    const { utils } = xlsx;
+    if (!utils || typeof utils.sheet_to_json !== "function") {
+      throw new Error("La librería de Excel no está disponible completamente.");
+    }
+
+    const fileBuffer = await file.arrayBuffer();
+    const workbook = xlsx.read(fileBuffer, { type: "array", cellDates: true, dense: true });
+    const [firstSheetName] = workbook.SheetNames ?? [];
+    if (!firstSheetName) {
+      throw new Error("El archivo de Excel no contiene hojas para importar.");
+    }
+
+    const worksheet = workbook.Sheets?.[firstSheetName];
+    if (!worksheet) {
+      throw new Error("No se pudo leer la primera hoja del archivo de Excel.");
+    }
+
+    const rows = utils.sheet_to_json(worksheet, {
+      header: 1,
+      raw: true,
+      blankrows: false,
+      defval: null,
+    });
+
+    const { entries: importedEntries, skippedRows, missingRequiredColumns } = parseImportedRows(rows);
+
+    if (missingRequiredColumns.length) {
+      throw new Error(
+        `El archivo debe incluir las columnas obligatorias: ${missingRequiredColumns.join(", ")}.`,
+      );
+    }
+
+    if (!importedEntries.length) {
+      if (skippedRows.length) {
+        throw new Error("No se encontraron registros válidos en el archivo.");
+      }
+      throw new Error("El archivo no contiene registros para importar.");
+    }
+
+    const mergeResult = mergeImportedEntries(entries, importedEntries);
+
+    if (mergeResult.added || mergeResult.updated) {
+      persistEntries(entries);
+      refreshAll(entries);
+    }
+
+    const summary = buildImportSummaryMessage(mergeResult, skippedRows);
+    window.alert(summary);
+  } catch (error) {
+    console.error("No se pudo importar el archivo de Excel.", error);
+    const message = error instanceof Error && error.message
+      ? error.message
+      : "No se pudo importar el archivo de Excel. Verifica el formato e inténtalo nuevamente.";
+    window.alert(message);
+  } finally {
+    setImportButtonBusy(false);
+  }
+}
+
+function setImportButtonBusy(isBusy) {
+  if (!elements.importButton) {
+    return;
+  }
+  elements.importButton.disabled = Boolean(isBusy);
+  elements.importButton.setAttribute("aria-disabled", String(Boolean(isBusy)));
+}
+
 function loadXlsxModule() {
   if (!xlsxModulePromise) {
     xlsxModulePromise = import(XLSX_MODULE_URL).catch(error => {
@@ -398,6 +556,419 @@ function createEntryFromForm() {
   }
 
   return entry;
+}
+
+function parseImportedRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return {
+      entries: [],
+      skippedRows: [],
+      missingRequiredColumns: EXCEL_COLUMNS.filter(column => column.required).map(
+        column => column.header,
+      ),
+    };
+  }
+
+  const headerRow = Array.isArray(rows[0]) ? rows[0] : [];
+  const columnMap = mapImportColumns(headerRow);
+
+  const missingRequiredColumns = EXCEL_COLUMNS.filter(
+    column => column.required && (columnMap[column.key] === undefined || columnMap[column.key] < 0),
+  ).map(column => column.header);
+
+  const dataRows = rows.slice(1);
+  const entriesToImport = [];
+  const skippedRows = [];
+
+  dataRows.forEach((row, index) => {
+    if (!Array.isArray(row) || isRowEmpty(row)) {
+      return;
+    }
+
+    const excelRowNumber = index + 2;
+    const dateIndex = columnMap.date ?? -1;
+    const weightIndex = columnMap.weight ?? -1;
+
+    const rawDate = dateIndex >= 0 ? row[dateIndex] : undefined;
+    const rawWeight = weightIndex >= 0 ? row[weightIndex] : undefined;
+
+    const parsedDate = parseExcelDateCell(rawDate);
+    const parsedWeight = parseImportedMetric(rawWeight);
+
+    if (!parsedDate || parsedWeight === null) {
+      skippedRows.push(excelRowNumber);
+      return;
+    }
+
+    const entry = {
+      date: parsedDate,
+      weight: parsedWeight,
+    };
+
+    const idIndex = columnMap.id ?? -1;
+    if (idIndex >= 0) {
+      const parsedId = parseImportedId(row[idIndex]);
+      if (parsedId) {
+        entry.id = parsedId;
+      }
+    }
+
+    for (const field of OPTIONAL_METRIC_FIELDS) {
+      const columnIndex = columnMap[field.key];
+      if (columnIndex === undefined || columnIndex < 0) {
+        entry[field.key] = undefined;
+        continue;
+      }
+      entry[field.key] = parseImportedMetric(row[columnIndex]);
+    }
+
+    entriesToImport.push(entry);
+  });
+
+  return {
+    entries: entriesToImport,
+    skippedRows,
+    missingRequiredColumns,
+  };
+}
+
+function mapImportColumns(headerRow) {
+  const normalisedHeaders = Array.isArray(headerRow)
+    ? headerRow.map(value => normaliseHeaderKey(value))
+    : [];
+
+  const columnMap = {};
+
+  for (const column of EXCEL_COLUMNS) {
+    const possibleKeys = getColumnImportKeys(column);
+    const index = normalisedHeaders.findIndex(header => possibleKeys.includes(header));
+    columnMap[column.key] = index;
+  }
+
+  return columnMap;
+}
+
+function getColumnImportKeys(column) {
+  const rawKeys = [column.header, ...(column.importKeys ?? [])];
+  const uniqueKeys = Array.from(new Set(rawKeys));
+  return uniqueKeys
+    .map(value => normaliseHeaderKey(value))
+    .filter(value => value.length > 0);
+}
+
+function normaliseHeaderKey(value) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseExcelDateCell(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      return null;
+    }
+    return value.toISOString().slice(0, 10);
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return convertExcelSerialToIsoDate(value);
+  }
+
+  const stringValue = String(value).trim();
+  if (!stringValue) {
+    return null;
+  }
+
+  const isoMatch = stringValue.match(/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/);
+  if (isoMatch) {
+    const [year, month, day] = stringValue.split(/[\/-]/).map(part => Number.parseInt(part, 10));
+    return createIsoDate(year, month, day);
+  }
+
+  const europeanMatch = stringValue.match(/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/);
+  if (europeanMatch) {
+    const [day, month, year] = stringValue.split(/[\/-]/).map(part => Number.parseInt(part, 10));
+    return createIsoDate(year, month, day);
+  }
+
+  const normalisedText = stringValue
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const textualMatch = normalisedText.match(/^([0-9]{1,2})\s*(?:de\s+)?([a-z]+)\s*(?:de\s+)?([0-9]{4})$/);
+  if (textualMatch) {
+    const day = Number.parseInt(textualMatch[1], 10);
+    const monthName = textualMatch[2];
+    const year = Number.parseInt(textualMatch[3], 10);
+    const month = SPANISH_MONTHS[monthName];
+    if (month) {
+      return createIsoDate(year, month, day);
+    }
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(normalisedText)) {
+    const numericValue = Number.parseFloat(normalisedText);
+    if (Number.isFinite(numericValue)) {
+      const serialDate = convertExcelSerialToIsoDate(numericValue);
+      if (serialDate) {
+        return serialDate;
+      }
+    }
+  }
+
+  const timestamp = Date.parse(stringValue);
+  if (!Number.isNaN(timestamp)) {
+    return new Date(timestamp).toISOString().slice(0, 10);
+  }
+
+  return null;
+}
+
+function convertExcelSerialToIsoDate(serial) {
+  if (!Number.isFinite(serial)) {
+    return null;
+  }
+
+  let adjustedSerial = serial;
+  if (adjustedSerial >= 60) {
+    adjustedSerial -= 1;
+  }
+
+  const milliseconds = Math.round(adjustedSerial * 86400000);
+  const excelEpoch = Date.UTC(1899, 11, 30);
+  const date = new Date(excelEpoch + milliseconds);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function createIsoDate(year, month, day) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function parseImportedMetric(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return parseMetric(value);
+  }
+
+  if (value instanceof Date) {
+    return null;
+  }
+
+  let normalised = String(value).trim();
+  if (!normalised) {
+    return null;
+  }
+
+  normalised = normalised.replace(/[^0-9,.-]+/g, "");
+  if (!normalised) {
+    return null;
+  }
+
+  normalised = normalised.replace(/,/g, ".");
+
+  const parts = normalised.split(".");
+  if (parts.length > 2) {
+    const decimalPart = parts.pop();
+    normalised = parts.join("") + "." + decimalPart;
+  }
+
+  return parseMetric(normalised);
+}
+
+function parseImportedId(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
+}
+
+function isRowEmpty(row) {
+  return row.every(cell => {
+    if (cell === undefined || cell === null) {
+      return true;
+    }
+    if (typeof cell === "string") {
+      return cell.trim() === "";
+    }
+    return false;
+  });
+}
+
+function mergeImportedEntries(existingEntries, importedEntries) {
+  const indexById = new Map();
+  const indexByDate = new Map();
+
+  existingEntries.forEach((entry, index) => {
+    indexById.set(entry.id, index);
+    if (!indexByDate.has(entry.date)) {
+      indexByDate.set(entry.date, index);
+    }
+  });
+
+  let added = 0;
+  let updated = 0;
+
+  for (const incoming of importedEntries) {
+    let targetIndex = -1;
+
+    if (incoming.id && indexById.has(incoming.id)) {
+      targetIndex = indexById.get(incoming.id);
+    } else if (indexByDate.has(incoming.date)) {
+      targetIndex = indexByDate.get(incoming.date);
+    }
+
+    if (targetIndex >= 0) {
+      const currentEntry = existingEntries[targetIndex];
+      const nextEntry = { ...currentEntry };
+      let hasChanges = false;
+
+      if (currentEntry.date !== incoming.date) {
+        nextEntry.date = incoming.date;
+        hasChanges = true;
+      }
+
+      if (currentEntry.weight !== incoming.weight) {
+        nextEntry.weight = incoming.weight;
+        hasChanges = true;
+      }
+
+      for (const field of OPTIONAL_METRIC_FIELDS) {
+        if (incoming[field.key] !== undefined) {
+          const incomingValue = incoming[field.key] ?? null;
+          const currentValue = currentEntry[field.key] ?? null;
+          if (!metricsAreEqual(currentValue, incomingValue)) {
+            nextEntry[field.key] = incomingValue;
+            hasChanges = true;
+          }
+        }
+      }
+
+      if (hasChanges) {
+        existingEntries[targetIndex] = { ...nextEntry, id: currentEntry.id };
+        updated += 1;
+      }
+
+      const updatedEntry = existingEntries[targetIndex];
+      if (currentEntry.date !== updatedEntry.date) {
+        if (indexByDate.get(currentEntry.date) === targetIndex) {
+          indexByDate.delete(currentEntry.date);
+        }
+        if (!indexByDate.has(updatedEntry.date)) {
+          indexByDate.set(updatedEntry.date, targetIndex);
+        }
+      }
+    } else {
+      const storedEntry = createStoredEntryFromImport(incoming);
+      existingEntries.push(storedEntry);
+      const newIndex = existingEntries.length - 1;
+      indexById.set(storedEntry.id, newIndex);
+      if (!indexByDate.has(storedEntry.date)) {
+        indexByDate.set(storedEntry.date, newIndex);
+      }
+      added += 1;
+    }
+  }
+
+  if (added || updated) {
+    existingEntries.sort(compareEntries);
+  }
+
+  return { added, updated };
+}
+
+function metricsAreEqual(a, b) {
+  return (a ?? null) === (b ?? null);
+}
+
+function createStoredEntryFromImport(incoming) {
+  const entryId =
+    typeof incoming.id === "string" && incoming.id.length ? incoming.id : generateEntryId();
+
+  const storedEntry = {
+    id: entryId,
+    date: incoming.date,
+    weight: incoming.weight,
+  };
+
+  for (const field of OPTIONAL_METRIC_FIELDS) {
+    const value = incoming[field.key];
+    storedEntry[field.key] = value ?? null;
+  }
+
+  return storedEntry;
+}
+
+function buildImportSummaryMessage(mergeResult, skippedRows) {
+  const added = mergeResult?.added ?? 0;
+  const updated = mergeResult?.updated ?? 0;
+  const parts = [];
+
+  if (added > 0) {
+    parts.push(`${added} ${added === 1 ? "registro nuevo" : "registros nuevos"}`);
+  }
+
+  if (updated > 0) {
+    parts.push(`${updated} ${updated === 1 ? "registro actualizado" : "registros actualizados"}`);
+  }
+
+  let message = parts.length
+    ? `Importación completada: ${parts.join(" y ")}.`
+    : "No se encontraron registros nuevos para importar.";
+
+  if (skippedRows.length) {
+    const skippedLabel = skippedRows.length === 1 ? "fila" : "filas";
+    message += `\nSe omitieron ${skippedRows.length} ${skippedLabel} por datos incompletos (${skippedRows.join(", ")}).`;
+  }
+
+  return message;
 }
 
 function parseMetric(rawValue) {
