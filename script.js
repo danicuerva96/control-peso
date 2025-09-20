@@ -189,6 +189,7 @@ if (elements.tableBody) {
 if (elements.exportButton) {
   elements.exportButton.addEventListener("click", handleExportToExcel);
 }
+
 if (elements.importButton && elements.importInput) {
   elements.importButton.addEventListener("click", () => {
     elements.importInput?.click();
