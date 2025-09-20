@@ -1,5 +1,7 @@
 const STORAGE_KEY = "controlPeso.entries";
 const NUMBER_PRECISION = 1;
+const XLSX_MODULE_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm";
+const EXCEL_FILE_PREFIX = "control-peso";
 const dateFormatter = new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "short" });
 const tableDateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
@@ -59,6 +61,16 @@ const OPTIONAL_METRIC_FIELDS = [
   },
 ];
 
+const EXPORT_COLUMNS = [
+  { header: "Fecha", width: 20, value: entry => formatTableDate(entry.date) },
+  { header: "Peso (kg)", width: 14, value: entry => entry.weight ?? "" },
+  ...OPTIONAL_METRIC_FIELDS.map(field => ({
+    header: `${field.label} (${field.unit})`,
+    width: 16,
+    value: entry => entry[field.key] ?? "",
+  })),
+];
+
 const elements = {
   form: document.querySelector("#entry-form"),
   date: document.querySelector("#date"),
@@ -83,6 +95,7 @@ const elements = {
   tableBody: document.querySelector("#entries-table-body"),
   tableEmptyState: document.querySelector("#entries-empty-state"),
   rowTemplate: document.querySelector("#entry-row-template"),
+  exportButton: document.querySelector("#export-excel"),
 };
 
 if (!elements.form) {
@@ -96,6 +109,7 @@ const editingSubmitIcon = "✏️";
 
 let editingEntryId = null;
 let editingEntryOriginalDate = null;
+let xlsxModulePromise = null;
 
 const entries = loadEntries();
 const chart = initialiseChart(elements.chartCanvas);
@@ -110,6 +124,9 @@ if (elements.cancelEditButton) {
 }
 if (elements.tableBody) {
   elements.tableBody.addEventListener("click", handleTableClick);
+}
+if (elements.exportButton) {
+  elements.exportButton.addEventListener("click", handleExportToExcel);
 }
 if (elements.date) {
   elements.date.addEventListener("input", () => {
@@ -297,6 +314,70 @@ function handleDeleteEntry(entryId) {
   if (editingEntryId === entryId) {
     resetFormState();
   }
+}
+
+async function handleExportToExcel() {
+  if (!entries.length) {
+    window.alert("Necesitas al menos un registro para descargar el Excel.");
+    return;
+  }
+
+  if (elements.exportButton) {
+    elements.exportButton.disabled = true;
+    elements.exportButton.setAttribute("aria-disabled", "true");
+  }
+
+  try {
+    const xlsx = await loadXlsxModule();
+    if (!xlsx) {
+      throw new Error("No se pudo cargar la librería de Excel.");
+    }
+
+    const { utils } = xlsx;
+    const writeFile = xlsx.writeFile ?? xlsx.writeFileXLSX;
+    if (!utils || typeof utils.aoa_to_sheet !== "function" || typeof utils.book_new !== "function") {
+      throw new Error("La librería de Excel no está disponible completamente.");
+    }
+    if (typeof writeFile !== "function") {
+      throw new Error("No se pudo inicializar la descarga del archivo de Excel.");
+    }
+
+    const headerRow = EXPORT_COLUMNS.map(column => column.header);
+    const dataRows = entries.map(entry => EXPORT_COLUMNS.map(column => column.value(entry)));
+    const worksheet = utils.aoa_to_sheet([headerRow, ...dataRows]);
+    worksheet["!cols"] = EXPORT_COLUMNS.map(column => ({ wch: column.width }));
+
+    if (typeof utils.encode_range === "function") {
+      worksheet["!autofilter"] = {
+        ref: utils.encode_range({
+          s: { c: 0, r: 0 },
+          e: { c: EXPORT_COLUMNS.length - 1, r: entries.length },
+        }),
+      };
+    }
+
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, "Historial");
+
+    const fileName = createExportFileName();
+    writeFile(workbook, fileName, { compression: true });
+  } catch (error) {
+    console.error("No se pudo generar el archivo de Excel.", error);
+    window.alert("No se pudo generar el archivo de Excel. Vuelve a intentarlo más tarde.");
+  } finally {
+    setExportButtonState(entries.length > 0);
+  }
+}
+
+function loadXlsxModule() {
+  if (!xlsxModulePromise) {
+    xlsxModulePromise = import(XLSX_MODULE_URL).catch(error => {
+      xlsxModulePromise = null;
+      throw error;
+    });
+  }
+
+  return xlsxModulePromise;
 }
 
 function createEntryFromForm() {
@@ -598,6 +679,7 @@ function refreshAll(list) {
   refreshChart(chart, list);
   renderTable(list);
   setClearButtonState(list.length > 0);
+  setExportButtonState(list.length > 0);
   if (editingEntryId && elements.tableBody) {
     const rows = elements.tableBody.querySelectorAll("tr[data-entry-id]");
     rows.forEach(row => {
@@ -797,6 +879,14 @@ function parseIsoDate(value) {
   return new Date(timestamp);
 }
 
+function createExportFileName() {
+  const now = new Date();
+  const year = String(now.getFullYear());
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${EXCEL_FILE_PREFIX}-registros-${year}${month}${day}.xlsx`;
+}
+
 function handleClearAll() {
   if (!entries.length) {
     return;
@@ -812,6 +902,14 @@ function handleClearAll() {
   refreshAll(entries);
   resetFormState();
 
+}
+
+function setExportButtonState(isEnabled) {
+  if (!elements.exportButton) {
+    return;
+  }
+  elements.exportButton.disabled = !isEnabled;
+  elements.exportButton.setAttribute("aria-disabled", String(!isEnabled));
 }
 
 function setClearButtonState(isEnabled) {
